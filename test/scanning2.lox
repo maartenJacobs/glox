@@ -1,0 +1,10 @@
+// A simple pointless class
+class Foo {
+    fun hello() {
+        return "world"
+    }
+}
+
+fun main() {
+    exit(1) // Everything is broken all the time!
+}
