@@ -158,22 +158,22 @@ func (token Token) String() string {
 
 // Define all the keywords
 var keywords = map[string]int{
-	"and": TokenAnd,
-	"class": TokenClass,
-	"else": TokenElse,
-	"false": TokenFalse,
-	"for": TokenFor,
-	"fun": TokenFun,
-	"if": TokenIf,
-	"nil": TokenNil,
-	"or": TokenOr,
-	"print": TokenPrint,
+	"and":    TokenAnd,
+	"class":  TokenClass,
+	"else":   TokenElse,
+	"false":  TokenFalse,
+	"for":    TokenFor,
+	"fun":    TokenFun,
+	"if":     TokenIf,
+	"nil":    TokenNil,
+	"or":     TokenOr,
+	"print":  TokenPrint,
 	"return": TokenReturn,
-	"super": TokenSuper,
-	"this": TokenThis,
-	"true": TokenTrue,
-	"var": TokenVar,
-	"while": TokenWhile,
+	"super":  TokenSuper,
+	"this":   TokenThis,
+	"true":   TokenTrue,
+	"var":    TokenVar,
+	"while":  TokenWhile,
 }
 
 // Scanner scans the source code left to right and returns a list of tokens interpreted from
