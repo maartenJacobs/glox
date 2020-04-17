@@ -156,6 +156,17 @@ func (token Token) String() string {
 	return fmt.Sprintf("%s %s %v", tokenType, token.Lexeme, token.Literal)
 }
 
+// Define a helper struct for numbers.
+
+// Number wraps a glox number to make it printable.
+type Number struct {
+	V float64
+}
+
+func (n Number) String() string {
+	return fmt.Sprintf("%.10f", n.V)
+}
+
 // Define all the keywords
 var keywords = map[string]int{
 	"and":    TokenAnd,
@@ -367,7 +378,7 @@ func (scanner *Scanner) number() {
 	if err != nil { // This would be due to a compiler programmer's error
 		panic(err)
 	}
-	scanner.addLiteralToken(TokenNumber, floatValue)
+	scanner.addLiteralToken(TokenNumber, Number{V: floatValue})
 }
 
 func (scanner *Scanner) peekNext() byte {
