@@ -20,28 +20,33 @@ func (p *Printer) Print(expr Expr) string {
 	return p.output.String()
 }
 
-func (p *Printer) visitBinary(binary Binary) {
+func (p *Printer) visitBinary(binary Binary) interface{} {
 	p.parenthesize(binary.Operator.Lexeme, binary.Left, binary.Right)
+	return nil
 }
 
-func (p *Printer) visitGroupingExpr(grouping Grouping) {
+func (p *Printer) visitGroupingExpr(grouping Grouping) interface{} {
 	p.parenthesize("group", grouping.Expression)
+	return nil
 }
 
-func (p *Printer) visitUnary(unary Unary) {
+func (p *Printer) visitUnary(unary Unary) interface{} {
 	p.parenthesize(unary.Operator.Lexeme, unary.Right)
+	return nil
 }
 
-func (p *Printer) visitTernary(ternary Ternary) {
+func (p *Printer) visitTernary(ternary Ternary) interface{} {
 	p.parenthesize("?:", ternary.Cond, ternary.TrueBranch, ternary.FalseBranch)
+	return nil
 }
 
-func (p *Printer) visitLiteral(literal Literal) {
+func (p *Printer) visitLiteral(literal Literal) interface{} {
 	if literal.Value == nil {
 		p.output.WriteString("nil")
 	} else {
 		p.output.WriteString(literal.Value.String())
 	}
+	return nil
 }
 
 func (p *Printer) parenthesize(name string, exprs ...Expr) {

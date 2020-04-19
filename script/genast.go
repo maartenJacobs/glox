@@ -51,8 +51,8 @@ func defineAst(types []string) (output []byte) {
 	for _, exprLine := range types {
 		exprType := strings.TrimSpace(strings.Split(exprLine, ":")[0])
 		exprFields := strings.TrimSpace(strings.Split(exprLine, ":")[1])
-		visitFuncs = append(visitFuncs, fmt.Sprintf("Visit%s func(%s)", exprType, exprType))
-		exprStructs = append(exprStructs, fmt.Sprintf("type %s struct {\n%s\n}\n\nfunc (e %s) Visit(v ExprVisitor) {\n\tv.Visit%s(e)\n}", exprType, exprFields, exprType, exprType))
+		visitFuncs = append(visitFuncs, fmt.Sprintf("Visit%s func(%s) interface{}", exprType, exprType))
+		exprStructs = append(exprStructs, fmt.Sprintf("type %s struct {\n%s\n}\n\nfunc (e %s) Visit(v ExprVisitor) interface{} {\n\treturn v.Visit%s(e)\n}", exprType, exprFields, exprType, exprType))
 	}
 
 	output = append(output, "package internal\n"...)
@@ -64,7 +64,7 @@ func defineAst(types []string) (output []byte) {
 	// Add ExprVisitor
 	output = append(output, fmt.Sprintf("type ExprVisitor struct {\n\t%s\n}\n\n", strings.Join(visitFuncs, "\n\t"))...)
 	// Add Expr
-	output = append(output, "type Expr interface {\n\tVisit(v ExprVisitor)\n}\n"...)
+	output = append(output, "type Expr interface {\n\tVisit(v ExprVisitor) interface{}\n}\n"...)
 	// Add Expr types
 	output = append(output, strings.Join(exprStructs, "\n\n")...)
 
