@@ -6,13 +6,15 @@ import (
 	"strconv"
 )
 
+type TokenType int
+
 // Define all token types.
 const (
 	// TODO: hardcode values instead of relying on iota. That will allow future compatibility
 	// as the value should not change over time, e.g. by entering a token between 2 tokens.
 
 	// Single-character tokens.
-	TokenLeftParen = iota
+	TokenLeftParen TokenType = iota
 	TokenRightParen
 	TokenLeftBrace
 	TokenRightBrace
@@ -65,7 +67,7 @@ const (
 // Token represents a lexeme read from the input code, the inferred type and the location
 // in the input code. The literal value is also included, if any is interpreted.
 type Token struct {
-	Type    int // One of the TOKEN_* constants
+	Type    TokenType // One of the TOKEN_* constants
 	Lexeme  string
 	Literal interface{}
 	Line    int
@@ -197,7 +199,7 @@ func (s String) String() string {
 }
 
 // Define all the keywords
-var keywords = map[string]int{
+var keywords = map[string]TokenType{
 	"and":    TokenAnd,
 	"class":  TokenClass,
 	"else":   TokenElse,
@@ -338,11 +340,11 @@ func (scanner *Scanner) advance() byte {
 	return scanner.source[scanner.current-1]
 }
 
-func (scanner *Scanner) addToken(tokenType int) {
+func (scanner *Scanner) addToken(tokenType TokenType) {
 	scanner.addLiteralToken(tokenType, nil)
 }
 
-func (scanner *Scanner) addLiteralToken(tokenType int, literal interface{}) {
+func (scanner *Scanner) addLiteralToken(tokenType TokenType, literal interface{}) {
 	text := string(scanner.source[scanner.start:scanner.current])
 	scanner.tokens = append(scanner.tokens, Token{tokenType, text, literal, scanner.line})
 }
@@ -611,7 +613,7 @@ func (parser *Parser) primary() Expr {
 
 // Parsing infrastructure.
 
-func (parser *Parser) match(tokenTypes ...int) bool {
+func (parser *Parser) match(tokenTypes ...TokenType) bool {
 	for _, tokenType := range tokenTypes {
 		if parser.check(tokenType) {
 			parser.advance()
@@ -621,7 +623,7 @@ func (parser *Parser) match(tokenTypes ...int) bool {
 	return false
 }
 
-func (parser *Parser) check(tokenType int) bool {
+func (parser *Parser) check(tokenType TokenType) bool {
 	if parser.isAtEnd() {
 		return false
 	}
@@ -661,7 +663,7 @@ func (p parseError) RuntimeError() {
 	panic("implement me")
 }
 
-func (parser *Parser) consume(tokenType int, msg string) Token {
+func (parser *Parser) consume(tokenType TokenType, msg string) Token {
 	if parser.check(tokenType) {
 		return parser.advance()
 	}
