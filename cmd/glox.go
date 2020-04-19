@@ -10,13 +10,17 @@ import (
 
 func run(code []byte) (bool, error) {
 	reporter := internal.StateErrorReporter{}
-	scanner := internal.NewScanner(code, &reporter)
-	tokens := scanner.ScanTokens()
+	frontend := internal.NewFrontend(code, &reporter)
+	expr := frontend.Parse()
 
-	for _, token := range tokens {
-		fmt.Println(token)
+	if reporter.HadError {
+		return reporter.HadError, nil
 	}
-	return reporter.HadError, nil
+	if expr != nil {
+		printer := internal.Printer{}
+		fmt.Println(printer.Print(expr))
+	}
+	return expr != nil, nil
 }
 
 func runFile(filePath string) error {

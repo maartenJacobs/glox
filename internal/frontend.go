@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -156,7 +157,7 @@ func (token Token) String() string {
 	return fmt.Sprintf("%s %s %v", tokenType, token.Lexeme, token.Literal)
 }
 
-// Define a helper struct for numbers.
+// Define helper structs for literal values.
 
 // Number wraps a glox number to make it printable.
 type Number struct {
@@ -165,6 +166,28 @@ type Number struct {
 
 func (n Number) String() string {
 	return fmt.Sprintf("%.10f", n.V)
+}
+
+// Boolean wraps a glox boolean to make it printable.
+type Boolean struct {
+	V bool
+}
+
+func (b Boolean) String() string {
+	if b.V {
+		return "true"
+	} else {
+		return "false"
+	}
+}
+
+// String wraps a glox string to make it printable.
+type String struct {
+	V string
+}
+
+func (s String) String() string {
+	return "\"" + s.V + "\""
 }
 
 // Define all the keywords
@@ -408,4 +431,257 @@ func (scanner *Scanner) identifier() {
 		tokenType = TokenIdentifier
 	}
 	scanner.addToken(tokenType)
+}
+
+// Parsing.
+
+type Parser struct {
+	tokens   []Token
+	reporter ErrorReporter
+	current  int
+}
+
+func NewParser(tokens []Token, reporter ErrorReporter) Parser {
+	return Parser{
+		tokens:   tokens,
+		reporter: reporter,
+		current:  0,
+	}
+}
+
+func (parser Parser) Parse() (expr Expr, e error) {
+	defer func() {
+		if _, isParseError := recover().(parseError); isParseError {
+			expr = nil
+			e = errors.New("failed to parse")
+		}
+	}()
+	expr = parser.expression()
+	return
+}
+
+func (parser *Parser) expression() Expr {
+	return parser.equality()
+}
+
+func (parser *Parser) equality() Expr {
+	expr := parser.comparison()
+
+	for parser.match(TokenBang, TokenBangEqual) {
+		operator := parser.previous()
+		right := parser.comparison()
+		expr = Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+	return expr
+}
+
+func (parser *Parser) comparison() Expr {
+	expr := parser.addition()
+
+	for parser.match(TokenGreater, TokenGreaterEqual, TokenLess, TokenLessEqual) {
+		operator := parser.previous()
+		right := parser.addition()
+		expr = Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+	return expr
+}
+
+func (parser *Parser) addition() Expr {
+	expr := parser.multiplication()
+
+	for parser.match(TokenMinus, TokenPlus) {
+		operator := parser.previous()
+		right := parser.multiplication()
+		expr = Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+	return expr
+}
+
+func (parser *Parser) multiplication() Expr {
+	expr := parser.unary()
+
+	for parser.match(TokenStar, TokenSlash) {
+		operator := parser.previous()
+		right := parser.unary()
+		expr = Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+	return expr
+}
+
+func (parser *Parser) unary() Expr {
+	if parser.match(TokenBang, TokenMinus) {
+		operator := parser.previous()
+		right := parser.unary()
+		return Unary{
+			Operator: operator,
+			Right:    right,
+		}
+	}
+	return parser.primary()
+}
+
+func (parser *Parser) primary() Expr {
+	if parser.match(TokenFalse) {
+		return Literal{
+			Value: Boolean{V: false},
+		}
+	}
+	if parser.match(TokenTrue) {
+		return Literal{
+			Value: Boolean{V: true},
+		}
+	}
+	if parser.match(TokenNil) {
+		return Literal{Value: nil}
+	}
+
+	if parser.match(TokenNumber) {
+		return Literal{Value: parser.previous().Literal.(Number)}
+	}
+
+	if parser.match(TokenString) {
+		return Literal{Value: String{V: parser.previous().Literal.(string)}}
+	}
+
+	if parser.match(TokenLeftParen) {
+		expr := parser.expression()
+		parser.consume(TokenRightParen, "Expect ')' after expression.")
+		return Grouping{Expression: expr}
+	}
+
+	panic(parser.error(parser.peek(), "Expect expression."))
+}
+
+// Parsing infrastructure.
+
+func (parser *Parser) match(tokenTypes ...int) bool {
+	for _, tokenType := range tokenTypes {
+		if parser.check(tokenType) {
+			parser.advance()
+			return true
+		}
+	}
+	return false
+}
+
+func (parser *Parser) check(tokenType int) bool {
+	if parser.isAtEnd() {
+		return false
+	}
+	return parser.peek().Type == tokenType
+}
+
+func (parser *Parser) advance() Token {
+	if !parser.isAtEnd() {
+		parser.current++
+	}
+	return parser.previous()
+}
+
+func (parser *Parser) isAtEnd() bool {
+	return parser.peek().Type == TokenEof
+}
+
+func (parser *Parser) peek() Token {
+	return parser.tokens[parser.current]
+}
+
+func (parser *Parser) previous() Token {
+	return parser.tokens[parser.current-1]
+}
+
+// Error recovery infrastructure.
+
+// Sentinel error used to unwind the parser.
+type parseError struct {
+}
+
+func (p parseError) Error() string {
+	return "Parse error"
+}
+
+func (p parseError) RuntimeError() {
+	panic("implement me")
+}
+
+func (parser *Parser) consume(tokenType int, msg string) Token {
+	if parser.check(tokenType) {
+		return parser.advance()
+	}
+
+	panic(parser.error(parser.peek(), msg))
+}
+
+func (parser *Parser) error(token Token, msg string) parseError {
+	if token.Type == TokenEof {
+		parser.reporter.Report(token.Line, " at end", msg)
+	} else {
+		parser.reporter.Report(token.Line, " at '"+token.Lexeme+"'", msg)
+	}
+	return parseError{}
+}
+
+// synchronize throws away any upcoming tokens until we hit a point of synchronization.
+// For glox this is any token that starts a new statement.
+func (parser *Parser) synchronize() {
+	parser.advance()
+
+	for !parser.isAtEnd() {
+		// Semicolons end statements so we can be certain that the next token starts a new statement.
+		if parser.previous().Type == TokenSemicolon {
+			return
+		}
+
+		switch parser.peek().Type {
+		case TokenClass:
+		case TokenFun:
+		case TokenVar:
+		case TokenFor:
+		case TokenIf:
+		case TokenWhile:
+		case TokenPrint:
+		case TokenReturn:
+			return
+		}
+
+		parser.advance()
+	}
+}
+
+// Frontend wrapper.
+
+type Frontend struct {
+	source   []byte
+	reporter ErrorReporter
+}
+
+func NewFrontend(source []byte, reporter ErrorReporter) Frontend {
+	return Frontend{
+		source:   source,
+		reporter: reporter,
+	}
+}
+
+func (frontend *Frontend) Parse() Expr {
+	scanner := NewScanner(frontend.source, frontend.reporter)
+	tokens := scanner.ScanTokens()
+	parser := NewParser(tokens, frontend.reporter)
+	expr, _ := parser.Parse()
+	return expr
 }

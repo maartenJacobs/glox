@@ -1,6 +1,8 @@
-package ast
+package internal
 
-import "strings"
+import (
+	"strings"
+)
 
 type Printer struct {
 	output strings.Builder
