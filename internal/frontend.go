@@ -23,6 +23,8 @@ const (
 	TokenSemicolon
 	TokenSlash
 	TokenStar
+	TokenQuestion
+	TokenColon
 
 	// One or two character tokens.
 	TokenBang
@@ -152,6 +154,10 @@ func (token Token) String() string {
 		tokenType = "WHILE"
 	} else if token.Type == TokenEof {
 		tokenType = "EOF"
+	} else if token.Type == TokenColon {
+		tokenType = "COLON"
+	} else if token.Type == TokenQuestion {
+		tokenType = "QUESTION"
 	}
 
 	return fmt.Sprintf("%s %s %v", tokenType, token.Lexeme, token.Literal)
@@ -269,6 +275,10 @@ func (scanner *Scanner) scanToken() {
 		scanner.addToken(TokenSemicolon)
 	case '*':
 		scanner.addToken(TokenStar)
+	case '?':
+		scanner.addToken(TokenQuestion)
+	case ':':
+		scanner.addToken(TokenColon)
 	case '!':
 		if scanner.match('=') {
 			scanner.addToken(TokenBangEqual)
@@ -465,11 +475,11 @@ func (parser *Parser) expression() Expr {
 }
 
 func (parser *Parser) comma() Expr {
-	expr := parser.equality()
+	expr := parser.ternary()
 
 	for parser.match(TokenComma) {
 		operator := parser.previous()
-		right := parser.equality()
+		right := parser.ternary()
 		expr = Binary{
 			Left:     expr,
 			Operator: operator,
@@ -479,10 +489,26 @@ func (parser *Parser) comma() Expr {
 	return expr
 }
 
+func (parser *Parser) ternary() Expr {
+	expr := parser.equality()
+
+	if parser.match(TokenQuestion) {
+		trueExpr := parser.expression()
+		parser.consume(TokenColon, "Expect colon.")
+		falseExpr := parser.expression()
+		expr = Ternary{
+			Cond:        expr,
+			TrueBranch:  trueExpr,
+			FalseBranch: falseExpr,
+		}
+	}
+	return expr
+}
+
 func (parser *Parser) equality() Expr {
 	expr := parser.comparison()
 
-	for parser.match(TokenBang, TokenBangEqual) {
+	for parser.match(TokenEqualEqual, TokenBangEqual) {
 		operator := parser.previous()
 		right := parser.comparison()
 		expr = Binary{

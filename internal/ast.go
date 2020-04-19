@@ -9,6 +9,7 @@ type ExprVisitor struct {
 	VisitGrouping func(Grouping)
 	VisitLiteral  func(Literal)
 	VisitUnary    func(Unary)
+	VisitTernary  func(Ternary)
 }
 
 type Expr interface {
@@ -47,4 +48,14 @@ type Unary struct {
 
 func (e Unary) Visit(v ExprVisitor) {
 	v.VisitUnary(e)
+}
+
+type Ternary struct {
+	Cond        Expr
+	TrueBranch  Expr
+	FalseBranch Expr
+}
+
+func (e Ternary) Visit(v ExprVisitor) {
+	v.VisitTernary(e)
 }

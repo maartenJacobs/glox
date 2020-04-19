@@ -20,6 +20,7 @@ func main() {
 		"Grouping : Expression Expr",
 		"Literal  : Value fmt.Stringer",
 		"Unary    : Operator Token\nRight Expr",
+		"Ternary  : Cond Expr\nTrueBranch Expr\nFalseBranch Expr",
 	})
 
 	// Format the source code before writing to disk.

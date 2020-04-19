@@ -15,6 +15,7 @@ func (p *Printer) Print(expr Expr) string {
 		VisitGrouping: p.visitGroupingExpr,
 		VisitLiteral:  p.visitLiteral,
 		VisitUnary:    p.visitUnary,
+		VisitTernary:  p.visitTernary,
 	})
 	return p.output.String()
 }
@@ -29,6 +30,10 @@ func (p *Printer) visitGroupingExpr(grouping Grouping) {
 
 func (p *Printer) visitUnary(unary Unary) {
 	p.parenthesize(unary.Operator.Lexeme, unary.Right)
+}
+
+func (p *Printer) visitTernary(ternary Ternary) {
+	p.parenthesize("?:", ternary.Cond, ternary.TrueBranch, ternary.FalseBranch)
 }
 
 func (p *Printer) visitLiteral(literal Literal) {
