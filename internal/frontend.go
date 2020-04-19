@@ -461,7 +461,22 @@ func (parser Parser) Parse() (expr Expr, e error) {
 }
 
 func (parser *Parser) expression() Expr {
-	return parser.equality()
+	return parser.comma()
+}
+
+func (parser *Parser) comma() Expr {
+	expr := parser.equality()
+
+	for parser.match(TokenComma) {
+		operator := parser.previous()
+		right := parser.equality()
+		expr = Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+	return expr
 }
 
 func (parser *Parser) equality() Expr {
