@@ -8,32 +8,46 @@ import (
 	"os"
 )
 
-func run(code []byte) (bool, error) {
+type ErrorType int
+
+const (
+	HadNoError ErrorType = iota
+	HadGeneralError
+	HadRuntimeError
+)
+
+func run(code []byte) ErrorType {
 	reporter := internal.StateErrorReporter{}
 	frontend := internal.NewFrontend(code, &reporter)
 	expr := frontend.Parse()
+	interpreter := internal.NewInterpreter(&reporter)
 
 	if reporter.HadError {
-		return reporter.HadError, nil
+		return HadGeneralError
 	}
 	if expr != nil {
-		printer := internal.Printer{}
-		fmt.Println(printer.Print(expr))
+		interpreter.Interpret(expr)
+		if reporter.HadRuntimeError {
+			return HadRuntimeError
+		}
 	}
-	return expr != nil, nil
+	return HadNoError
 }
 
 func runFile(filePath string) error {
 	if code, e := ioutil.ReadFile(filePath); e != nil {
 		return e
 	} else {
-		if hadError, e := run(code); e != nil {
-			return e
-		} else if hadError {
+		switch run(code) {
+		case HadGeneralError:
 			os.Exit(65)
+		case HadRuntimeError:
+			os.Exit(70)
+		case HadNoError:
+			return nil
 		}
-		return nil
 	}
+	return nil
 }
 
 func runPrompt() error {
@@ -42,10 +56,8 @@ func runPrompt() error {
 		fmt.Print("> ")
 		if line, _, err := reader.ReadLine(); err != nil {
 			return err
-		} else if _, e := run(line); e != nil {
-			// Run line and print error. The REPL shouldn't stop on a programming error,
-			// unlike an IO error.
-			fmt.Println(e)
+		} else {
+			_ = run(line)
 		}
 	}
 }
