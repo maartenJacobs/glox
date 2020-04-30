@@ -59,3 +59,27 @@ type Ternary struct {
 func (e Ternary) Visit(v ExprVisitor) (error, interface{}) {
 	return v.VisitTernary(e)
 }
+
+type StmtVisitor interface {
+	VisitExpression(Expression) (error, interface{})
+	VisitPrint(Print) (error, interface{})
+}
+
+type Stmt interface {
+	Visit(v StmtVisitor) (error, interface{})
+}
+type Expression struct {
+	Expr *Expression
+}
+
+func (e Expression) Visit(v StmtVisitor) (error, interface{}) {
+	return v.VisitExpression(e)
+}
+
+type Print struct {
+	Expr Expression
+}
+
+func (e Print) Visit(v StmtVisitor) (error, interface{}) {
+	return v.VisitPrint(e)
+}
